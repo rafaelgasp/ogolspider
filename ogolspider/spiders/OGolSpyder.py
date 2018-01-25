@@ -10,7 +10,8 @@ class OGolSpider(scrapy.Spider):
 
     handle_httpstatus_list = [500]
 
-    anos = [ str(i) for i in range(2017, 2005, -1)]
+    #anos = [ str(i) for i in range(2017, 2005, -1)]
+    anos = ['2006', '2013', '2014', '2016']
     meses = [ '0'+str(i) if i < 10 else str(i) for i in range(4, 13)]
     dias = [ '0'+str(i) if i < 10 else str(i) for i in range(1, 32)]
 
@@ -25,13 +26,18 @@ class OGolSpider(scrapy.Spider):
     logfile = open('log_file.txt', 'w')
     
     start_urls = [
-        'http://www.espn.com/soccer/match?gameId=476296',
-        'http://www.espn.com/soccer/match?gameId=475933'
+        '/match?gameId=446153', # 2016
+        '/match?gameId=445960', # 2016
+        '/match?gameId=390297',
+        #'/match?gameId=446293', # 2014
+        '/match?gameId=390303', # 2014        
     ]
 
     #Faz a leitura das start_urls do arquivo txt
-    with open('links_UHUL.txt') as f:
-        start_urls = f.read().splitlines()
+    #with open('links_2018-01-25_20-07-12.txt') as f:
+    #    start_urls = f.read().splitlines()
+
+    print(len(start_urls))
 
     infos_jogos = pd.DataFrame(columns=['matchId', 'home', 'away', 'competition', 'home_goals', 'away_goals', 'date', 'stadium', 'home_lineup', 'away_lineup'])
     i = 0
@@ -41,7 +47,7 @@ class OGolSpider(scrapy.Spider):
         if self.porJogo:
             self.logfile.write("Programa iniciado em " + strftime("%Y-%m-%d %H:%M:%S", gmtime()) + "\n")
             for url in self.start_urls:
-                yield scrapy.Request('http://www.espn.com' + url, callback=self.principal, dont_filter=True)
+                yield scrapy.Request('http://www.espn.com/soccer/' + url, callback=self.principal, dont_filter=True)
                 self.logfile.flush()
         else:
             url_base = 'http://www.espn.com/soccer/fixtures/_/date/'
@@ -65,7 +71,7 @@ class OGolSpider(scrapy.Spider):
         else:
             if reason == "finished":
                 print("\tGuardando links no arquivo links.txt...:\n");
-                thefile = open('links.txt', 'w')
+                thefile = open('links_' + strftime("%Y-%m-%d_%H-%M-%S", gmtime()) + '.txt', 'w')
                 chaves = self.lista_links.keys()
                 
                 for chave_link in sorted(chaves):
@@ -93,8 +99,12 @@ class OGolSpider(scrapy.Spider):
         estadio = response.css('li[class="venue"] div::text').extract()[0].replace('VENUE: ', '')
 
         base = response.css('div.content-tab')
-        time_casa = base[0].css('div[class="accordion-header lineup-player"] span[class="name"]::text').extract()
-        time_fora = base[1].css('div[class="accordion-header lineup-player"] span[class="name"]::text').extract()
+        if (len(base) > 0):
+            time_casa = base[0].css('div[class="accordion-header lineup-player"] span[class="name"]::text').extract()
+            time_fora = base[1].css('div[class="accordion-header lineup-player"] span[class="name"]::text').extract()
+        else:
+            time_casa = []
+            time_fora = []
 
         self.infos_jogos.loc[self.i] = [response.url, times[0], times[1], competicao, self.getGoals(response, "home"), self.getGoals(response, "away"), data_jogo, estadio, self.getLineUps(response, time_casa), self.getLineUps(response, time_fora)]
         self.i = self.i + 1
